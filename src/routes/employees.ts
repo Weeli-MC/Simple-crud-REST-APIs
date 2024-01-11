@@ -1,6 +1,11 @@
 import { Router } from 'express';
 
-import {  GetAllEmployee, GetSingleEmployee, CreateEmployee, getOrg, deleteEmployee} from '../controllers/employees';
+import {  GetAllEmployee, 
+    GetSingleEmployee, 
+    CreateEmployee, 
+    getOrg, 
+    deleteEmployee
+} from '../controllers/employees';
 
 const router = Router();
 

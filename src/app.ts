@@ -13,4 +13,4 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   res.status(500).json({ "errorMessage": "string" });
 });
 
-app.listen(3000, ()=>console.log('working'));
+app.listen(3000, ()=>console.log('hey'));
