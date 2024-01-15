@@ -3,6 +3,8 @@
 export enum Department {
   HR = 'HR',
   PS = 'PS',
+  AC = 'AC',
+  IT = 'IT'
 }
 
 export interface Employee {

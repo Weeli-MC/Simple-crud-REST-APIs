@@ -1,20 +1,20 @@
 import { Router } from 'express';
 
-import {  GetAllEmployee, 
-    GetSingleEmployee, 
-    CreateEmployee, 
+import {  getAllEmployee, 
+    getSingleEmployee, 
+    createEmployee, 
     getOrg, 
     deleteEmployee
 } from '../controllers/employees';
 
 const router = Router();
 
-router.post('/', CreateEmployee);
+router.post('/', createEmployee);
 
-router.get('/', GetAllEmployee);
+router.get('/', getAllEmployee);
 
 
-router.get('/:id', GetSingleEmployee); 
+router.get('/:id', getSingleEmployee); 
 
 router.put('/:id', getOrg);
 

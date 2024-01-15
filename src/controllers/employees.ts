@@ -1,5 +1,6 @@
 import { RequestHandler, Request, Response } from 'express';
 import employeeServices from "../services/employeeServices"
+import { json } from 'body-parser';
 
 
 //1. use enums
@@ -9,27 +10,26 @@ import employeeServices from "../services/employeeServices"
 //5. more detailed/specific errors
 
 
-const employee = employeeServices.GetAllEmployee()
+const employee = employeeServices.getAllEmployee()
 
 
-export const GetAllEmployee: RequestHandler = (req: Request, res: Response) => {
+export const getAllEmployee: RequestHandler = (req: Request, res: Response) => {
   res.status(200).json({"employees": employee});
 };
 
 
 
-export const GetSingleEmployee: RequestHandler = (req: Request, res: Response) => {
+export const getSingleEmployee: RequestHandler = (req: Request, res: Response) => {
 
-  const id: number = parseInt(req.params.id);
-  const employeeById = employeeServices.GetSingleEmployee(id)
+  const employeeById = employeeServices.getSingleEmployee(req.params.id)
   res.status(200).json(employeeById);
 
 };
 
-export const CreateEmployee: RequestHandler = (req: Request, res: Response) => {
+export const createEmployee: RequestHandler = (req: Request, res: Response) => {
 
   const id = employee.length;
-  const updatedEmployee= employeeServices.CreateEmployee(id, req.body)
+  const updatedEmployee= employeeServices.createEmployee(id, req.body)
   
   //check if the type of input is valid
   if((!updatedEmployee )){
@@ -44,8 +44,7 @@ export const CreateEmployee: RequestHandler = (req: Request, res: Response) => {
 
 
 export const deleteEmployee: RequestHandler = (req: Request, res: Response) => {
-  const id: number = parseInt(req.params.id);
-  const deletedEmployee = employeeServices.deleteEmployee(id)
+  const deletedEmployee = employeeServices.deleteEmployee(req.params.id)
   if (!deletedEmployee) {
     res.status(404).json({ "errorMessage": "string" });
   }
@@ -54,24 +53,18 @@ export const deleteEmployee: RequestHandler = (req: Request, res: Response) => {
 };
 
 export const getOrg: RequestHandler = (req: Request, res: Response) => {
-  const id: number = parseInt(req.params.id);
-  const edited = employeeServices.getOrg(id, req.body)
+  const edited = employeeServices.getOrg(req.params.id, req.body)
 
 
-  switch(edited) {
+  switch(edited.status) {
     case 400:
-      res.status(400).json({ "errorMessage": "string" });
+      res.status(400).json({ "errorMessage": edited.errorMessage });
       break;
     case 404:
-      res.status(404).json({ "errorMessage": "string" });
+      res.status(404).json({ "errorMessage": edited.errorMessage });
       break;
     default:
       res.status(200).json(edited)
   }
-  
-
-  
- 
-
 };
 
