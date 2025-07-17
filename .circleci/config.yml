@@ -5,85 +5,27 @@ executors:
     docker:
       - image: aquasec/trivy:latest
 
-  python-executor:
-    docker:
-      - image: circleci/python:3.9
-
 jobs:
   trivy-scan:
     executor: trivy-executor
     steps:
       - checkout
+
       - run:
-          name: Run Trivy scan (SARIF output)
+          name: Run Trivy vulnerability scan (all severities)
           command: |
             trivy fs \
               --ignore-unfixed \
               --format sarif \
               --output trivy-results.sarif \
               --severity LOW,MEDIUM,HIGH,CRITICAL .
-      - persist_to_workspace:
-          root: .
-          paths:
-            - trivy-results.sarif
 
-  parse-report:
-    executor: python-executor
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Install Python dependencies
-          command: pip install tabulate
-      - run:
-          name: Parse SARIF and create vulnerability summary
-          command: |
-            python \<<EOF > trivy-report.txt
-            import json
-            from tabulate import tabulate
-
-            with open('trivy-results.sarif') as f:
-                sarif = json.load(f)
-
-            runs = sarif.get('runs', [])
-            if not runs or not runs[0].get('results'):
-                print("No vulnerabilities found.")
-                exit(0)
-
-            driver = runs[0].get('tool', {}).get('driver', {})
-            rules = {rule['id']: rule for rule in driver.get('rules', [])}
-            results = runs[0].get('results', [])
-
-            table = []
-            for result in results:
-                rule_id = result.get('ruleId', '')
-                rule = rules.get(rule_id, {})
-                severity = rule.get('defaultConfiguration', {}).get('level', 'N/A').upper()
-                help_text = rule.get('help', {}).get('text', '').replace('\n', ' ').strip()
-                help_uri = rule.get('helpUri', '')
-
-                package = "N/A"
-                fixed_version = "N/A"
-                lines = help_text.split('.')
-                for line in lines:
-                    if 'Package:' in line:
-                        package = line.split('Package:')[-1].strip()
-                    if 'Fixed Version:' in line:
-                        fixed_version = line.split('Fixed Version:')[-1].strip()
-
-                table.append([rule_id, severity, package, fixed_version, help_text, help_uri])
-
-            print(tabulate(table, headers=["Vulnerability ID", "Severity", "Package", "Fixed Version", "Description", "Link"], tablefmt="github"))
-            EOF
       - store_artifacts:
-          path: trivy-report.txt
-          destination: trivy-summary
+          path: trivy-results.sarif
+          destination: trivy-results
 
 workflows:
   version: 2
-  scan_and_report:
+  security_scan:
     jobs:
       - trivy-scan
-      - parse-report:
-          requires:
-            - trivy-scan
