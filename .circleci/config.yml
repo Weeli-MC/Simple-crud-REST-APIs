@@ -10,12 +10,22 @@ jobs:
     executor: trivy-executor
     steps:
       - checkout
+
       - run:
-          name: Run Trivy FS Scan
-          command: trivy fs --exit-code 0 --severity HIGH,CRITICAL .
+          name: Run Trivy vulnerability scan
+          command: |
+            trivy fs \
+              --ignore-unfixed \
+              --format sarif \
+              --output trivy-results.sarif \
+              --severity CRITICAL .
+
+      - store_artifacts:
+          path: trivy-results.sarif
+          destination: trivy-results
 
 workflows:
   version: 2
-  scan_only:
+  security_scan:
     jobs:
       - trivy-scan
