@@ -3,7 +3,7 @@ version: 2.1
 executors:
   trivy-executor:
     docker:
-      - image: aquasec/trivy:0.64.1
+      - image: aquasec/trivy:latest
 
   python-executor:
     docker:
@@ -22,7 +22,6 @@ jobs:
               --format sarif \
               --output trivy-results.sarif \
               --severity LOW,MEDIUM,HIGH,CRITICAL .
-
       - persist_to_workspace:
           root: .
           paths:
@@ -33,15 +32,13 @@ jobs:
     steps:
       - attach_workspace:
           at: .
-
       - run:
           name: Install Python dependencies
           command: pip install tabulate
-
       - run:
-          name: Parse SARIF and output vulnerability summary
+          name: Parse SARIF and create vulnerability summary
           command: |
-            python <<EOF > trivy-report.txt
+            python \<<EOF > trivy-report.txt
             import json
             from tabulate import tabulate
 
@@ -67,7 +64,6 @@ jobs:
 
                 package = "N/A"
                 fixed_version = "N/A"
-                # Extract package and fixed version if available in help text
                 lines = help_text.split('.')
                 for line in lines:
                     if 'Package:' in line:
@@ -79,10 +75,9 @@ jobs:
 
             print(tabulate(table, headers=["Vulnerability ID", "Severity", "Package", "Fixed Version", "Description", "Link"], tablefmt="github"))
             EOF
-
       - store_artifacts:
           path: trivy-report.txt
-          destination: trivy-report
+          destination: trivy-summary
 
 workflows:
   version: 2
