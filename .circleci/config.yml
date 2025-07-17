@@ -3,7 +3,7 @@ version: 2.1
 executors:
   trivy-executor:
     docker:
-      - image: aquasec/trivy:latest
+      - image: aquasec/trivy:0.64.1
 
   python-executor:
     docker:
@@ -14,7 +14,6 @@ jobs:
     executor: trivy-executor
     steps:
       - checkout
-
       - run:
           name: Run Trivy scan (SARIF output)
           command: |
@@ -42,7 +41,7 @@ jobs:
       - run:
           name: Parse SARIF and output vulnerability summary
           command: |
-            python \<<EOF
+            python <<EOF > trivy-report.txt
             import json
             from tabulate import tabulate
 
@@ -68,8 +67,9 @@ jobs:
 
                 package = "N/A"
                 fixed_version = "N/A"
-                # Try to extract package and fixed version from help text
-                for line in help_text.split('.'):
+                # Extract package and fixed version if available in help text
+                lines = help_text.split('.')
+                for line in lines:
                     if 'Package:' in line:
                         package = line.split('Package:')[-1].strip()
                     if 'Fixed Version:' in line:
@@ -79,6 +79,10 @@ jobs:
 
             print(tabulate(table, headers=["Vulnerability ID", "Severity", "Package", "Fixed Version", "Description", "Link"], tablefmt="github"))
             EOF
+
+      - store_artifacts:
+          path: trivy-report.txt
+          destination: trivy-report
 
 workflows:
   version: 2
