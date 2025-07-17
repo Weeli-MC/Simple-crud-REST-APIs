@@ -12,13 +12,13 @@ jobs:
       - checkout
 
       - run:
-          name: Run Trivy vulnerability scan
+          name: Run Trivy vulnerability scan (all severities)
           command: |
             trivy fs \
               --ignore-unfixed \
               --format sarif \
               --output trivy-results.sarif \
-              --severity CRITICAL .
+              --severity LOW,MEDIUM,HIGH,CRITICAL .
 
       - store_artifacts:
           path: trivy-results.sarif
