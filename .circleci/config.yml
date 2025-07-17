@@ -28,7 +28,7 @@ jobs:
       - run:
           name: Parse SARIF and generate summary table
           command: |
-            python <<'EOF'
+            python \<<'EOF' > trivy_summary.txt
             import json
             from tabulate import tabulate
 
@@ -51,7 +51,6 @@ jobs:
                 severity = rule.get('defaultConfiguration', {}).get('level', 'N/A').upper()
                 desc = rule.get('help', {}).get('text', '').split('\n')[0]
                 help_uri = rule.get('helpUri', '')
-                # Extract package & fixed version from description heuristically
                 package = "N/A"
                 fixed_version = "N/A"
                 lines = desc.split('.')
