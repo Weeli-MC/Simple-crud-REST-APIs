@@ -1,14 +1,13 @@
 version: 2.1
 
 executors:
-  trivy-executor:
+  python-executor:
     docker:
-      - image: aquasec/trivy:latest
-      - image: python:3.10 # for running python parsing script
+      - image: circleci/python:3.9
 
 jobs:
   trivy-scan:
-    executor: trivy-executor
+    executor: python-executor
     steps:
       - checkout
 
