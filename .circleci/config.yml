@@ -4,6 +4,7 @@ executors:
   trivy-executor:
     docker:
       - image: aquasec/trivy:latest
+      - image: python:3.10 # for running python parsing script
 
 jobs:
   trivy-scan:
@@ -12,7 +13,7 @@ jobs:
       - checkout
 
       - run:
-          name: Run Trivy vulnerability scan (all severities)
+          name: Run Trivy scan (SARIF output)
           command: |
             trivy fs \
               --ignore-unfixed \
@@ -20,12 +21,61 @@ jobs:
               --output trivy-results.sarif \
               --severity LOW,MEDIUM,HIGH,CRITICAL .
 
+      - run:
+          name: Install Python deps for parsing
+          command: pip install tabulate
+
+      - run:
+          name: Parse SARIF and generate summary table
+          command: |
+            python <<'EOF'
+            import json
+            from tabulate import tabulate
+
+            with open('trivy-results.sarif', 'r') as f:
+                sarif = json.load(f)
+
+            runs = sarif.get('runs', [])
+            if not runs:
+                print("No runs found in SARIF")
+                exit(1)
+
+            driver = runs[0].get('tool', {}).get('driver', {})
+            rules = {rule['id']: rule for rule in driver.get('rules', [])}
+            results = runs[0].get('results', [])
+
+            table = []
+            for result in results:
+                rule_id = result.get('ruleId') or result.get('ruleID') or ''
+                rule = rules.get(rule_id, {})
+                severity = rule.get('defaultConfiguration', {}).get('level', 'N/A').upper()
+                desc = rule.get('help', {}).get('text', '').split('\n')[0]
+                help_uri = rule.get('helpUri', '')
+                # Extract package & fixed version from description heuristically
+                package = "N/A"
+                fixed_version = "N/A"
+                lines = desc.split('.')
+                for line in lines:
+                    if 'Package:' in line:
+                        package = line.split('Package:')[-1].strip()
+                    if 'Fixed Version:' in line:
+                        fixed_version = line.split('Fixed Version:')[-1].strip()
+
+                table.append([rule_id, severity, package, fixed_version, desc, help_uri])
+
+            print(tabulate(table, headers=["Vulnerability ID", "Severity", "Package", "Fixed Version", "Description", "Link"], tablefmt="github"))
+            EOF
+
       - store_artifacts:
           path: trivy-results.sarif
-          destination: trivy-results
+          destination: trivy-sarif
+
+      - store_artifacts:
+          path: trivy_summary.txt
+          destination: trivy-summary
 
 workflows:
   version: 2
-  security_scan:
+  scan_and_report:
     jobs:
       - trivy-scan
