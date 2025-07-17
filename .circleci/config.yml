@@ -1,20 +1,19 @@
 version: 2.1
 
 executors:
+  trivy-executor:
+    docker:
+      - image: aquasec/trivy:latest
+
   python-executor:
     docker:
       - image: circleci/python:3.9
 
 jobs:
   trivy-scan:
-    executor: python-executor
+    executor: trivy-executor
     steps:
       - checkout
-
-      - run:
-          name: Install Trivy CLI
-          command: |
-            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
       - run:
           name: Run Trivy scan (SARIF output)
@@ -24,6 +23,17 @@ jobs:
               --format sarif \
               --output trivy-results.sarif \
               --severity LOW,MEDIUM,HIGH,CRITICAL .
+
+      - persist_to_workspace:
+          root: .
+          paths:
+            - trivy-results.sarif
+
+  parse-report:
+    executor: python-executor
+    steps:
+      - attach_workspace:
+          at: .
 
       - run:
           name: Install Python dependencies
@@ -58,6 +68,7 @@ jobs:
 
                 package = "N/A"
                 fixed_version = "N/A"
+                # Try to extract package and fixed version from help text
                 for line in help_text.split('.'):
                     if 'Package:' in line:
                         package = line.split('Package:')[-1].strip()
@@ -74,3 +85,6 @@ workflows:
   scan_and_report:
     jobs:
       - trivy-scan
+      - parse-report:
+          requires:
+            - trivy-scan
