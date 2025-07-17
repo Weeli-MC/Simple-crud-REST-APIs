@@ -12,6 +12,11 @@ jobs:
       - checkout
 
       - run:
+          name: Install Trivy CLI
+          command: |
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+      - run:
           name: Run Trivy scan (SARIF output)
           command: |
             trivy fs \
@@ -21,23 +26,23 @@ jobs:
               --severity LOW,MEDIUM,HIGH,CRITICAL .
 
       - run:
-          name: Install Python deps for parsing
+          name: Install Python dependencies
           command: pip install tabulate
 
       - run:
-          name: Parse SARIF and generate summary table
+          name: Parse SARIF and output vulnerability summary
           command: |
-            python \<<'EOF' > trivy_summary.txt
+            python \<<EOF
             import json
             from tabulate import tabulate
 
-            with open('trivy-results.sarif', 'r') as f:
+            with open('trivy-results.sarif') as f:
                 sarif = json.load(f)
 
             runs = sarif.get('runs', [])
-            if not runs:
-                print("No runs found in SARIF")
-                exit(1)
+            if not runs or not runs[0].get('results'):
+                print("No vulnerabilities found.")
+                exit(0)
 
             driver = runs[0].get('tool', {}).get('driver', {})
             rules = {rule['id']: rule for rule in driver.get('rules', [])}
@@ -45,32 +50,24 @@ jobs:
 
             table = []
             for result in results:
-                rule_id = result.get('ruleId') or result.get('ruleID') or ''
+                rule_id = result.get('ruleId', '')
                 rule = rules.get(rule_id, {})
                 severity = rule.get('defaultConfiguration', {}).get('level', 'N/A').upper()
-                desc = rule.get('help', {}).get('text', '').split('\n')[0]
+                help_text = rule.get('help', {}).get('text', '').replace('\n', ' ').strip()
                 help_uri = rule.get('helpUri', '')
+
                 package = "N/A"
                 fixed_version = "N/A"
-                lines = desc.split('.')
-                for line in lines:
+                for line in help_text.split('.'):
                     if 'Package:' in line:
                         package = line.split('Package:')[-1].strip()
                     if 'Fixed Version:' in line:
                         fixed_version = line.split('Fixed Version:')[-1].strip()
 
-                table.append([rule_id, severity, package, fixed_version, desc, help_uri])
+                table.append([rule_id, severity, package, fixed_version, help_text, help_uri])
 
             print(tabulate(table, headers=["Vulnerability ID", "Severity", "Package", "Fixed Version", "Description", "Link"], tablefmt="github"))
             EOF
-
-      - store_artifacts:
-          path: trivy-results.sarif
-          destination: trivy-sarif
-
-      - store_artifacts:
-          path: trivy_summary.txt
-          destination: trivy-summary
 
 workflows:
   version: 2
